@@ -28,8 +28,14 @@ def _snapshot() -> tuple[dict[int, dict[str, Any]], dict[int, dict[str, Any]]]:
     orders = mt5.orders_get()
     if positions is None or orders is None:
         raise RuntimeError(f"source MT5 read failed: {mt5.last_error()}")
+    pending_types = {
+        mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_SELL_LIMIT,
+        mt5.ORDER_TYPE_BUY_STOP, mt5.ORDER_TYPE_SELL_STOP,
+        mt5.ORDER_TYPE_BUY_STOP_LIMIT, mt5.ORDER_TYPE_SELL_STOP_LIMIT,
+    }
+    normalized_orders = [item for item in map(as_dict, orders) if int(item["type"]) in pending_types]
     return ({int(item["ticket"]): item for item in map(as_dict, positions)},
-            {int(item["ticket"]): item for item in map(as_dict, orders)})
+            {int(item["ticket"]): item for item in normalized_orders})
 
 
 def _mapping_for_open(event: Event) -> dict[str, Any]:

@@ -82,6 +82,21 @@ class TradeExecutor:
             raise RetryableError(message)
         raise FatalError(message)
 
+    def _market_filling(self, symbol: str) -> int:
+        """Translate MT5's allowed-filling bit flags into an order fill enum."""
+        assert mt5 is not None
+        info = mt5.symbol_info(symbol)
+        if info is None:
+            raise FatalError(f"destination symbol unavailable: {symbol}")
+        if info.trade_exemode != mt5.SYMBOL_TRADE_EXECUTION_MARKET:
+            return mt5.ORDER_FILLING_RETURN
+        allowed = int(info.filling_mode)
+        if allowed & mt5.SYMBOL_FILLING_IOC:
+            return mt5.ORDER_FILLING_IOC
+        if allowed & mt5.SYMBOL_FILLING_FOK:
+            return mt5.ORDER_FILLING_FOK
+        raise FatalError(f"destination symbol {symbol} does not allow a market-order filling mode")
+
     def _market_request(self, symbol: str, direction: str, volume: float, event: Event, *, close_ticket: int = 0) -> dict[str, Any]:
         assert mt5 is not None
         tick = mt5.symbol_info_tick(symbol)
@@ -93,7 +108,7 @@ class TradeExecutor:
             "type": mt5.ORDER_TYPE_BUY if buy else mt5.ORDER_TYPE_SELL,
             "price": tick.ask if buy else tick.bid, "deviation": int(self.config["deviation_points"]),
             "magic": int(self.config["magic"]), "comment": f"AC:{event.source_ticket}",
-            "type_time": mt5.ORDER_TIME_GTC, "type_filling": mt5.symbol_info(symbol).filling_mode,
+            "type_time": mt5.ORDER_TIME_GTC, "type_filling": self._market_filling(symbol),
         }
         if close_ticket:
             request["position"] = close_ticket
