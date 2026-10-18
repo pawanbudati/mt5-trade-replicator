@@ -1,0 +1,24 @@
+config.json
+state.json
+state.tmp
+.heartbeats/
+
+# Runtime logs
+*.log
+
+# Python environments, bytecode, and tooling output
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local editor settings
+.vscode/
+.idea/

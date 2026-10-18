@@ -1,0 +1,27 @@
+{
+  "source": {
+    "login": 12345678,
+    "password": "INVESTOR_PASSWORD",
+    "server": "Broker-Server",
+    "terminal_path": "C:\\Program Files\\MetaTrader 5 Source\\terminal64.exe"
+  },
+  "destination": {
+    "login": 87654321,
+    "password": "YOUR_TRADING_PASSWORD",
+    "server": "Broker-Server",
+    "terminal_path": "C:\\Program Files\\MetaTrader 5 Destination\\terminal64.exe"
+  },
+  "live_trading": false,
+  "poll_ms": 500,
+  "volume_multiplier": 1.0,
+  "deviation_points": 20,
+  "magic": 601018,
+  "symbol_map": {
+    "EURUSD.a": "EURUSD"
+  },
+  "ipc_port": 19018,
+  "max_retries": 3,
+  "heartbeat_every_n_cycles": 30,
+  "state_save_every_n_cycles": 10,
+  "max_event_queue_size": 1000
+}
