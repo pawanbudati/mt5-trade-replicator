@@ -1,30 +1,46 @@
 [CmdletBinding()]
 param(
-    [switch]$Reinstall
+    [switch]$Reinstall,
+    [switch]$RecreateVenv
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
-$venvPython = Join-Path $root '.venv\Scripts\python.exe'
+$venvDir = Join-Path $root '.venv'
+$venvPython = Join-Path $venvDir 'Scripts\python.exe'
 $configPath = Join-Path $root 'config.json'
 $configExample = Join-Path $root 'config.example.json'
 
-function Get-PythonCommand {
-    $launcher = Get-Command py -ErrorAction SilentlyContinue
-    if ($launcher) {
-        return @('py', '-3')
+function Test-CompatiblePython([string]$Executable, [string[]]$CommandArguments) {
+    & $Executable @CommandArguments -c "import struct, sys; sys.exit(0 if (3, 10) -le sys.version_info[:2] -and sys.version_info[:2] -le (3, 14) -and struct.calcsize('P') == 8 else 1)" 2>$null
+    return $LASTEXITCODE -eq 0
+}
+
+function Get-CompatiblePythonCommand {
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        foreach ($version in '3.14', '3.13', '3.12', '3.11', '3.10') {
+            if (Test-CompatiblePython 'py' @("-$version")) {
+                return @('py', "-$version")
+            }
+        }
     }
-    $python = Get-Command python -ErrorAction SilentlyContinue
-    if ($python) {
-        return @('python')
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        if (Test-CompatiblePython 'python' @()) {
+            return @('python')
+        }
     }
-    throw 'Python 3 was not found. Install Python 3.10+ from python.org, then run this script again.'
+    throw 'Install 64-bit CPython 3.10 through 3.14, then run this script again. MetaTrader5 only publishes Windows x86-64 wheels.'
+}
+
+if ($RecreateVenv -and (Test-Path $venvDir)) {
+    Write-Host 'Removing the existing virtual environment...'
+    Remove-Item -LiteralPath $venvDir -Recurse -Force
 }
 
 if (-not (Test-Path $venvPython)) {
-    $pythonCommand = Get-PythonCommand
+    $pythonCommand = Get-CompatiblePythonCommand
     Write-Host 'Creating virtual environment...'
     if ($pythonCommand.Length -gt 1) {
         & $pythonCommand[0] $pythonCommand[1] -m venv .venv
@@ -32,6 +48,8 @@ if (-not (Test-Path $venvPython)) {
         & $pythonCommand[0] -m venv .venv
     }
     if ($LASTEXITCODE -ne 0) { throw 'Virtual environment creation failed.' }
+} elseif (-not (Test-CompatiblePython $venvPython @())) {
+    throw 'The existing .venv does not use supported 64-bit Python 3.10-3.14. Install a supported Python version, then run: .\setup-and-run.ps1 -RecreateVenv'
 }
 
 if ($Reinstall -or -not (Test-Path (Join-Path $root '.venv\.installed'))) {
